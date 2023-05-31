@@ -355,7 +355,7 @@ def process_result_demand_forecast_data(dates_receipt, pass_bks):
         ],
         "chart_options": {
             "chart": {
-                "height": 350,
+                "height": 500,
                 "type": "line",
                 "stacked": False,
             },
@@ -363,7 +363,7 @@ def process_result_demand_forecast_data(dates_receipt, pass_bks):
                 "enabled": False,
             },
             "stroke": {
-                "width": [1, 6, 3],
+                "width": [5, 1, 3],
                 "curve": "straight",
             },
             "colors": ["#02458d", "#f37b09"],
@@ -374,12 +374,9 @@ def process_result_demand_forecast_data(dates_receipt, pass_bks):
                     "opacity": 0.5,
                 },
             },
-            "title": {
-                "text": "Динамика бронирования рейса",
-                "align": "left",
-                "offsetX": 110,
-            },
+
             "xaxis": {
+                "type": "datetime",
                 "categories": dates_receipt,
             },
             "yaxis": [
@@ -397,37 +394,32 @@ def process_result_demand_forecast_data(dates_receipt, pass_bks):
                         },
                     },
                     "tooltip": {
-                        "enabled": "true",
-                    },
-                },
-                {
-                    "opposite": True,
-                    "axisTicks": {
-                        "show": True,
-                        "color": "#f37b09",
-                    },
-                    "axisBorder": {
-                        "show": True,
-                        "color": "#f37b09",
-                    },
-                    "labels": {
-                        "style": {
-                            "colors": "#f37b09",
-                        },
+                        "enabled": True,
                     },
                 },
             ],
             "tooltip": {
+                "enabled": True,
+                "shared": True,
+                "intersect": False,
+                "followCursor": True,
+                "marker": {
+                    "show": False,
+                },
+                "x": {
+                    "format": "dd MMM yyyy",
+                },
                 "fixed": {
                     "enabled": True,
                     "position": "topLeft",
-                    "offsetY": 30,
-                    "offsetX": 60,
+                    "offsetY": 35,
+                    "offsetX": 70,
                 },
             },
             "legend": {
                 "horizontalAlign": "left",
                 "offsetX": 40,
+                "fontSize": "17px",
             },
         },
     }
