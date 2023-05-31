@@ -82,3 +82,19 @@ class ClassBronSeason(Base):
     __table_args__ = (
         engines.Memory(),
     )
+
+
+class RaspScoreAll(Base):
+    __tablename__ = 'rasp_score_all2'
+
+    FLT_NUM = Column('FLT_NUM', Integer)
+    EQUIP = Column('EQUIP', String)
+    DD = Column('DD', Date, primary_key=True)
+    DTD = Column('DTD', Integer)
+    SDAT_S = Column('SDAT_S', Date)
+    SEG_CLASS_CODE = Column('SEG_CLASS_CODE', String)
+    PASS_BK = Column('PASS_BK', Integer)
+
+    __table_args__ = (
+        engines.Memory(),
+    )

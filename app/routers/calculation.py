@@ -4,7 +4,7 @@ from typing import Optional
 from fastapi import Query, APIRouter
 
 from app.database import session
-from app.models import BookingBronIncrement, ClassBronSeason
+from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll
 from app.utils import (
     process_result_dynamic_single_data,
     process_result_dynamic_multiple_data,
@@ -172,32 +172,31 @@ async def get_demand_forecast(
         booking_period_end_date = flight_date_obj
 
         query = session.query(
-            BookingBronIncrement.SDAT_S,
-            BookingBronIncrement.Increment_day,
-            BookingBronIncrement.PASS_BK,
+            RaspScoreAll.SDAT_S,
+            RaspScoreAll.PASS_BK,
         )
 
         query = query.filter(
-            BookingBronIncrement.FLT_NUM == flight_number,
-            BookingBronIncrement.DD == flight_date,
-            BookingBronIncrement.SEG_CLASS_CODE == booking_class,
-            BookingBronIncrement.SDAT_S.between(booking_period_start_date, booking_period_end_date),
+            RaspScoreAll.FLT_NUM == flight_number,
+            RaspScoreAll.DD == flight_date,
+            RaspScoreAll.SEG_CLASS_CODE == booking_class,
+            RaspScoreAll.SDAT_S.between(booking_period_start_date, booking_period_end_date),
         )
 
         dates_receipt = []
-        increments_days = []
         pass_bks = []
 
         for result in query.all():
             sdat_s = result.SDAT_S
-            increment_day = result.Increment_day
             pass_bk = result.PASS_BK
 
             dates_receipt.append(sdat_s)
-            increments_days.append(increment_day)
             pass_bks.append(pass_bk)
 
-        res_data = process_result_demand_forecast_data(dates_receipt, increments_days, pass_bks)
+        res_data = process_result_demand_forecast_data(dates_receipt, pass_bks)
+
+        if not dates_receipt or not pass_bks:
+            return {'status': 400, 'error': 'Некорректные данные. Один или несколько списков пустые.'}
 
         return {'status': 200, "data": res_data}
 

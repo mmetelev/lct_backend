@@ -341,17 +341,12 @@ def process_result_season_data(
     return data
 
 
-def process_result_demand_forecast_data(dates_receipt, increments_days, pass_bks):
+def process_result_demand_forecast_data(dates_receipt, pass_bks):
     """
     Формирование данных для построения графика предсказаний.
     """
     data = {
         "series": [
-            {
-                "name": "Бронирование за день",
-                "type": "column",
-                "data": increments_days,
-            },
             {
                 "name": "Суммарное бронирование",
                 "type": "line",
