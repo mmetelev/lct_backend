@@ -188,7 +188,7 @@ async def get_demand_forecast(
 
         for result in query.all():
             sdat_s = result.SDAT_S
-            pass_bk = result.PASS_BK
+            pass_bk = round(result.PASS_BK, 1)
 
             dates_receipt.append(sdat_s)
             pass_bks.append(pass_bk)
