@@ -1,6 +1,6 @@
 from .database import Base
 
-from sqlalchemy import String, Date, Integer, Column
+from sqlalchemy import String, Date, Integer, Column, DECIMAL
 from clickhouse_sqlalchemy import engines
 
 
@@ -94,6 +94,19 @@ class RaspScoreAll(Base):
     SDAT_S = Column('SDAT_S', Date)
     SEG_CLASS_CODE = Column('SEG_CLASS_CODE', String)
     PASS_BK = Column('PASS_BK', Integer)
+
+    __table_args__ = (
+        engines.Memory(),
+    )
+
+
+class SeasonMosSochi(Base):
+    __tablename__ = 'Season_Mos_sochi'
+
+    Season_name = Column('Season_name', String)
+    Direction = Column('Direction', String)
+    date_season = Column('date_season', Date, primary_key=True)
+    Height = Column('Height', DECIMAL)
 
     __table_args__ = (
         engines.Memory(),

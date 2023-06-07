@@ -2,9 +2,10 @@ from datetime import datetime, timedelta, date
 from typing import Optional
 
 from fastapi import Query, APIRouter
+from sqlalchemy import distinct
 
 from app.database import session
-from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll
+from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, SeasonMosSochi
 from app.utils import (
     process_result_dynamic_single_data,
     process_result_dynamic_multiple_data,
@@ -105,6 +106,7 @@ async def get_booking_dynamics(
 
 @router.get("/seasonality")
 async def get_seasonality(
+        direction: str = Query(..., description="Направление рейса", example="Москва - Сочи"),
         flight_number: str = Query(..., description="Номер рейса", example="1120"),
         booking_class: str = Query(..., description="Класс бронирования", example="Y"),
         booking_start: Optional[date] = Query(...,
@@ -120,13 +122,14 @@ async def get_seasonality(
     классов бронирования по вылетевшим рейсам.
     """
     try:
+        series_data = [{'series': []}]
 
-        query = session.query(
+        class_bron_season_query = session.query(
             ClassBronSeason.SDAT_S,
             ClassBronSeason.Increment_day,
         )
 
-        query = query.filter(
+        class_bron_season_query = class_bron_season_query.filter(
             ClassBronSeason.FLT_NUM == flight_number,
             ClassBronSeason.SEG_CLASS_CODE == booking_class,
             ClassBronSeason.SDAT_S.between(booking_start, booking_end)
@@ -135,19 +138,56 @@ async def get_seasonality(
         dates_receipt = []
         increments_days = []
 
-        for result in query.all():
+        for result in class_bron_season_query.all():
             sdat_s = result.SDAT_S
             increment_day = result.Increment_day
 
             dates_receipt.append(sdat_s)
             increments_days.append(increment_day)
 
-        if not dates_receipt or not increments_days:
-            return {'status': 400, 'error': 'Некорректные данные. Один или несколько списков пустые.'}
+        series_data[0]['series'].append({
+            "name": "График спроса",
+            "type": "column",
+            "data": increments_days,
+        })
 
-        res_data = process_result_season_data(dates_receipt, increments_days)
+        season_query = (
+            session.query(distinct(SeasonMosSochi.Season_name))
+            .filter(SeasonMosSochi.date_season.between(booking_start, booking_end))
+        )
+        seasons_names = [season_name[0] for season_name in season_query]
 
-        return {'status': 200, "data": res_data}
+        for season_name in seasons_names:
+
+            height = []
+            for date_receipt in dates_receipt:
+                query = session.query(
+                    SeasonMosSochi.Height,
+                )
+
+                query = query.filter(
+                    SeasonMosSochi.Season_name == season_name,
+                    SeasonMosSochi.Direction == direction,
+                    SeasonMosSochi.date_season == date_receipt,
+                )
+
+                if query.all():
+                    for result in query.all():
+                        data = result.Height
+
+                        height.append(data)
+                else:
+                    height.append(0)
+
+            series_data[0]['series'].append({
+                "name": season_name,
+                "type": "column",
+                "data": height,
+            })
+
+        res_data = process_result_season_data(series_data, dates_receipt)
+
+        return {'status': 200, 'data': res_data}
 
     except Exception as e:
         return {'status': 500, 'error': str(e)}
@@ -155,9 +195,9 @@ async def get_seasonality(
 
 @router.get("/demand-forecast")
 async def get_demand_forecast(
-        flight_number: int = Query(..., description="Номер рейса", example="1120"),
-        flight_date: str = Query(..., description="Дата рейса", example="2018-05-29"),
-        booking_class: str = Query(..., description="Класс бронирования", example="Y"),
+        flight_number: int = Query(..., description="Номер рейса", example="1116"),
+        flight_date: str = Query(..., description="Дата рейса", example="2020-03-29"),
+        booking_class: str = Query(..., description="Класс бронирования", example="B"),
         booking_period: Optional[int] = Query(1, ge=1, le=12,
                                               description="Период прогнозирования спроса для рейса (в месяцах)",
                                               example='1'),
@@ -170,6 +210,7 @@ async def get_demand_forecast(
 
         booking_period_start_date = flight_date_obj - timedelta(days=booking_period * 30)
         booking_period_end_date = flight_date_obj
+        booking_classes = booking_class.replace(" ", "").split(",")
 
         query = session.query(
             RaspScoreAll.SDAT_S,
@@ -179,24 +220,39 @@ async def get_demand_forecast(
         query = query.filter(
             RaspScoreAll.FLT_NUM == flight_number,
             RaspScoreAll.DD == flight_date,
-            RaspScoreAll.SEG_CLASS_CODE == booking_class,
+            RaspScoreAll.SEG_CLASS_CODE.in_(booking_classes),
             RaspScoreAll.SDAT_S.between(booking_period_start_date, booking_period_end_date),
         )
 
         dates_receipt = []
-        pass_bks = []
-
         for result in query.all():
             sdat_s = result.SDAT_S
-            pass_bk = round(result.PASS_BK, 1)
-
             dates_receipt.append(sdat_s)
-            pass_bks.append(pass_bk)
 
-        res_data = process_result_demand_forecast_data(dates_receipt, pass_bks)
+        series_data = [{'series': []}]
 
-        if not dates_receipt or not pass_bks:
-            return {'status': 400, 'error': 'Некорректные данные. Один или несколько списков пустые.'}
+        for booking_class in booking_classes:
+            pass_query = query.filter(
+                RaspScoreAll.SEG_CLASS_CODE == booking_class,
+                RaspScoreAll.DTD >= 0,
+            )
+
+            pass_bks = [round(result.PASS_BK, 1) for result in pass_query.all()]
+
+            if pass_bks:
+                series_data[0]['series'].append({
+                    'name': f'Суммарное бронирование {booking_class}',
+                    'type': 'line',
+                    'data': pass_bks
+                })
+            else:
+                series_data[0]['series'].append({
+                    'name': f'Данных для класс {booking_class} не найдено',
+                    'type': 'line',
+                    'data': [0, 0, 0, 0, 0, 0, 0, 0]
+                })
+
+        res_data = process_result_demand_forecast_data(series_data, dates_receipt)
 
         return {'status': 200, "data": res_data}
 
