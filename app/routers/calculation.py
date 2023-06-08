@@ -5,7 +5,7 @@ from fastapi import Query, APIRouter
 from sqlalchemy import distinct
 
 from app.database import session
-from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, SeasonMosSochi, Season
+from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, Season
 from app.utils import (
     process_result_dynamic_single_data,
     process_result_dynamic_multiple_data,
