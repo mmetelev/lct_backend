@@ -237,18 +237,21 @@ def process_result_season_data(
                 "height": 500,
                 "type": "line",
                 "stacked": True,
+                "animations": {
+                    "enabled": False
+                }
             },
             "plotOptions": {
                 "bar": {
-                    "columnWidth": "100%",
-                },
+                    "columnWidth": "100%"
+                }
             },
             "dataLabels": {
-                "enabled": False,
+                "enabled": False
             },
             "stroke": {
                 "width": [6],
-                "curve": "straight",
+                "curve": "straight"
             },
             "noData": "Данных нет",
             "colors": [
@@ -266,42 +269,113 @@ def process_result_season_data(
                 "fa9e0d",
                 "#002469",
                 "1c1475",
-                "#8a8b99",
+                "#8a8b99"
             ],
             "xaxis": {
                 "type": "datetime",
                 "categories": dates_receipt,
             },
-
             "yaxis": [
                 {
                     "tickAmount": 10,
                     "axisTicks": {
-                        "show": True,
+                        "show": True
                     },
                     "axisBorder": {
                         "show": True,
-                        "color": "#02458d",
+                        "color": "#02458d"
                     },
                     "labels": {
                         "style": {
-                            "colors": "#02458d",
-                        },
-                    },
-                },
+                            "colors": "#02458d"
+                        }
+                    }
+                }
             ],
             "tooltip": {
                 "fixed": {
                     "enabled": True,
                     "position": "topLeft",
                     "offsetY": 30,
-                    "offsetX": 60,
-                },
-            },
-        },
+                    "offsetX": 60
+                }
+            }
+        }
     }
 
     return data
+
+    # data = {
+    #     "series": series_data[0]['series'],
+    #     "chart_options": {
+    #         "chart": {
+    #             "height": 500,
+    #             "type": "line",
+    #             "stacked": True,
+    #         },
+    #         "plotOptions": {
+    #             "bar": {
+    #                 "columnWidth": "100%",
+    #             },
+    #         },
+    #         "dataLabels": {
+    #             "enabled": False,
+    #         },
+    #         "stroke": {
+    #             "width": [6],
+    #             "curve": "straight",
+    #         },
+    #         "noData": "Данных нет",
+    #         "colors": [
+    #             "#ce003d",
+    #             "#de7008",
+    #             "#578ad6",
+    #             "#d4470f",
+    #             "#7f7f7e",
+    #             "#de8703",
+    #             "#d9d6d1",
+    #             "#003896",
+    #             "#b3c7e3",
+    #             "#d2cbbf",
+    #             "#f25900",
+    #             "fa9e0d",
+    #             "#002469",
+    #             "1c1475",
+    #             "#8a8b99",
+    #         ],
+    #         "xaxis": {
+    #             "type": "datetime",
+    #             "categories": dates_receipt,
+    #         },
+    #
+    #         "yaxis": [
+    #             {
+    #                 "tickAmount": 10,
+    #                 "axisTicks": {
+    #                     "show": True,
+    #                 },
+    #                 "axisBorder": {
+    #                     "show": True,
+    #                     "color": "#02458d",
+    #                 },
+    #                 "labels": {
+    #                     "style": {
+    #                         "colors": "#02458d",
+    #                     },
+    #                 },
+    #             },
+    #         ],
+    #         "tooltip": {
+    #             "fixed": {
+    #                 "enabled": True,
+    #                 "position": "topLeft",
+    #                 "offsetY": 30,
+    #                 "offsetX": 60,
+    #             },
+    #         },
+    #     },
+    # }
+    #
 
 
 def process_result_demand_forecast_data(

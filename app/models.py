@@ -111,3 +111,16 @@ class SeasonMosSochi(Base):
     __table_args__ = (
         engines.Memory(),
     )
+
+
+class Season(Base):
+    __tablename__ = 'season'
+
+    date_season = Column('date_season', Date, primary_key=True)
+    Season_name = Column('Season_name', String)
+    Direction = Column('Direction', String)
+    Height = Column('Height', DECIMAL)
+
+    __table_args__ = (
+        engines.Memory(),
+    )
