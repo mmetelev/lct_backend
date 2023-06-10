@@ -155,3 +155,27 @@ class RaspAllClass(Base):
     __table_args__ = (
         engines.Memory(),
     )
+
+
+class RASP20ScenarioAll(Base):
+    __tablename__ = 'RASP20_scenario_all'
+
+    FLT_NUM = Column('FLT_NUM', Integer)
+    SORG = Column("SORG", String)
+    SDST = Column("SDST", String)
+    EQUIP = Column('EQUIP', String)
+    DD = Column('DD', Date)
+    SDAT_S = Column('SDAT_S', Date, primary_key=True)
+    Pred_C_cabin_real = Column('Pred_C_cabin_real', DECIMAL)
+    Pred_Y_cabin_real = Column('Pred_Y_cabin_real', DECIMAL)
+    Pred_flight_real = Column('Pred_flight_real', DECIMAL)
+    Pred_C_cabin_p30 = Column('Pred_C_cabin_p30', DECIMAL)
+    Pred_Y_cabin_p30 = Column('Pred_Y_cabin_p30', DECIMAL)
+    Pred_flight_p30 = Column('Pred_flight_p30', DECIMAL)
+    Pred_C_cabin_m20 = Column('Pred_C_cabin_m20', DECIMAL)
+    Pred_Y_cabin_m20 = Column('Pred_Y_cabin_m20', DECIMAL)
+    Pred_flight_m20 = Column('Pred_flight_m20', DECIMAL)
+
+    __table_args__ = (
+        engines.Memory(),
+    )

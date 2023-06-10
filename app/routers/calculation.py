@@ -5,7 +5,14 @@ from fastapi import Query, APIRouter
 from sqlalchemy import distinct, asc
 
 from app.database import session
-from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, Season, RASPScenario, RaspAllClass
+from app.models import (
+    BookingBronIncrement,
+    ClassBronSeason,
+    RaspScoreAll,
+    Season,
+    RaspAllClass,
+    RASP20ScenarioAll
+)
 from app.utils import (
     process_result_dynamic_single_data,
     process_result_dynamic_multiple_data,
@@ -189,38 +196,86 @@ async def get_seasonality(
 
 @router.get("/scenario-forecasts/")
 async def get_scenarios_forecasts(
-        flight_number: str = Query(..., description="Номер рейса", example="1120"),
-        flight_date: str = Query(..., description="Дата рейса", example="2018-05-29"),
-        scenario: str = Query(..., description="", example="позитивный (+20%)"),
+        flight_number: str = Query(..., description="Номер рейса", example="1135"),
+        flight_date: str = Query(..., description="Дата рейса", example="2020-01-01"),
+        scenario: str = Query(..., description="", example="реальный 2020 год"),
         booking_period: Optional[int] = Query(1, ge=1, le=12,
                                               description="Период прогнозирования спроса для рейса (в месяцах)",
                                               example='1'),
 ):
     """Сценарный прогноз."""
 
-    flight_date_obj = datetime.strptime(flight_date, "%Y-%m-%d").date()
+    try:
+        flight_date_obj = datetime.strptime(flight_date, "%Y-%m-%d").date()
 
-    booking_period_start_date = flight_date_obj - timedelta(days=booking_period * 30)
-    booking_period_end_date = flight_date_obj
+        booking_period_start_date = flight_date_obj - timedelta(days=booking_period * 30)
+        booking_period_end_date = flight_date_obj
 
-    query = (
-        session.query(
-            RASPScenario.SDAT_S,
-            RASPScenario.Pred_C_cabin,
-            RASPScenario.Pred_Y_cabin
+        scenarios = {
+            "позитивный (+30%)": RASP20ScenarioAll.Pred_flight_p30,
+            "негативный -(20%)": RASP20ScenarioAll.Pred_flight_m20,
+            "реальный 2020 год": RASP20ScenarioAll.Pred_flight_real,
+        }
+
+        scenarios_name = {
+            "позитивный (+30%)": "Сценарий +30%",
+            "негативный -(20%)": "Сценарий -20%",
+            "реальный 2020 год": "Реальный факт 2020",
+        }
+
+        user_scenarios = scenario.split(",")
+
+        data_receipt_query = (
+            session.query(
+                RASP20ScenarioAll.SDAT_S,
+            )
+            .filter(
+                RASP20ScenarioAll.FLT_NUM == flight_number,
+                RASP20ScenarioAll.SDAT_S.between(
+                    booking_period_start_date,
+                    booking_period_end_date
+                ),
+                RASP20ScenarioAll.DD == flight_date,
+            ).all()
         )
-        .filter(
-            RASPScenario.FLT_NUM == flight_number,
-            RASPScenario.SDAT_S.between(booking_period_start_date, booking_period_end_date)
-        ).all()
-    )
 
-    series_data = [{'series': []}]
+        dates_receipt = [row[0] for row in data_receipt_query]
 
-    dates_receipt = []
-    for result in query.all():
-        sdat_s = result.SDAT_S
-        dates_receipt.append(sdat_s)
+        series_data = [{'series': []}]
+
+        for user_scenario in user_scenarios:
+            query_scenario = scenarios.get(user_scenario)
+            name = scenarios_name.get(user_scenario)
+
+            query = (
+                session.query(
+                    query_scenario,
+                    RASP20ScenarioAll.SDAT_S,
+                )
+                .filter(
+                    RASP20ScenarioAll.FLT_NUM == flight_number,
+                    RASP20ScenarioAll.SDAT_S.between(
+                        booking_period_start_date,
+                        booking_period_end_date
+                    ),
+                    RASP20ScenarioAll.DD == flight_date,
+                ).all()
+            )
+
+            data = [row[0] for row in query]
+
+            series_data[0]['series'].append({
+                "name": name,
+                "type": "line",
+                "data": data,
+            })
+
+        res_data = process_result_demand_forecast_data(series_data, dates_receipt)
+
+        return {'status': 200, "data": res_data}
+
+    except Exception as e:
+        return {'status': 500, 'error': str(e)}
 
 
 @router.get("/demand-forecast")
@@ -303,20 +358,17 @@ async def get_demand_forecast(
             )
 
             pass_bks = [result.PASS_BK for result in query.all()]
+            dates_receipt = [row[0] for row in query.all()]
 
-            dates_receipt = []
-            for result in query.all():
-                sdat_s = result.SDAT_S
-
-                dates_receipt.append(sdat_s)
-
-            series_data = [{'series': []}]
-
-            series_data[0]['series'].append({
-                'name': f'Суммарное бронирование "Все классы"',
-                'type': 'line',
-                'data': pass_bks
-            })
+            series_data = [
+                {
+                    'series': [{
+                        'name': f'Суммарное бронирование "Все классы"',
+                        'type': 'line',
+                        'data': pass_bks
+                    }]
+                }
+            ]
 
             res_data = process_result_demand_forecast_data(series_data, dates_receipt)
 
