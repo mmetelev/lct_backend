@@ -198,7 +198,7 @@ async def get_seasonality(
 async def get_scenarios_forecasts(
         flight_number: str = Query(..., description="Номер рейса", example="1135"),
         flight_date: str = Query(..., description="Дата рейса", example="2020-01-01"),
-        scenario: str = Query(..., description="", example="реальный 2020 год"),
+        scenario: str = Query(..., description="", example="реальный"),
         booking_period: Optional[int] = Query(1, ge=1, le=12,
                                               description="Период прогнозирования спроса для рейса (в месяцах)",
                                               example='1'),
@@ -212,18 +212,18 @@ async def get_scenarios_forecasts(
         booking_period_end_date = flight_date_obj
 
         scenarios = {
-            "позитивный (+30%)": RASP20ScenarioAll.Pred_flight_p30,
-            "негативный -(20%)": RASP20ScenarioAll.Pred_flight_m20,
-            "реальный 2020 год": RASP20ScenarioAll.Pred_flight_real,
+            "позитивный": RASP20ScenarioAll.Pred_flight_p30,
+            "негативный": RASP20ScenarioAll.Pred_flight_m20,
+            "реальный": RASP20ScenarioAll.Pred_flight_real,
         }
 
         scenarios_name = {
-            "позитивный (+30%)": "Сценарий +30%",
-            "негативный -(20%)": "Сценарий -20%",
-            "реальный 2020 год": "Реальный факт 2020",
+            "позитивный": "Сценарий +30%",
+            "негативный": "Сценарий -20%",
+            "реальный": "Реальный факт 2020",
         }
 
-        user_scenarios = scenario.split(",")
+        user_scenarios = scenario.replace(" ", "").split(",")
 
         data_receipt_query = (
             session.query(
