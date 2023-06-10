@@ -124,3 +124,34 @@ class Season(Base):
     __table_args__ = (
         engines.Memory(),
     )
+
+
+class RASPScenario(Base):
+    __tablename__ = 'RASP20_score_scenario'
+
+    FLT_NUM = Column('FLT_NUM', Integer)
+    SORG = Column("SORG", String)
+    SDST = Column("SDST", String)
+    EQUIP = Column('EQUIP', String)
+    DD = Column('DD', Date)
+    SDAT_S = Column('SDAT_S', Date, primary_key=True)
+    Pred_C_cabin = Column('Pred_C_cabin', Integer)
+    Pred_Y_cabin = Column('Pred_Y_cabin', Integer)
+
+    __table_args__ = (
+        engines.Memory(),
+    )
+
+
+class RaspAllClass(Base):
+    __tablename__ = 'rasp_score_all_noclass'
+
+    SDAT_S = Column('SDAT_S', Date, primary_key=True)
+    DTD = Column('DTD', Integer)
+    FLT_NUM = Column('FLT_NUM', Integer)
+    DD = Column('DD', Date)
+    PASS_BK = Column('PASS_BK', Integer)
+
+    __table_args__ = (
+        engines.Memory(),
+    )

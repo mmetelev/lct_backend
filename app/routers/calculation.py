@@ -2,10 +2,10 @@ from datetime import datetime, timedelta, date
 from typing import Optional
 
 from fastapi import Query, APIRouter
-from sqlalchemy import distinct
+from sqlalchemy import distinct, asc
 
 from app.database import session
-from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, Season
+from app.models import BookingBronIncrement, ClassBronSeason, RaspScoreAll, Season, RASPScenario, RaspAllClass
 from app.utils import (
     process_result_dynamic_single_data,
     process_result_dynamic_multiple_data,
@@ -187,86 +187,140 @@ async def get_seasonality(
         return {'status': 500, 'error': str(e)}
 
 
+@router.get("/scenario-forecasts/")
+async def get_scenarios_forecasts(
+        flight_number: str = Query(..., description="Номер рейса", example="1120"),
+        flight_date: str = Query(..., description="Дата рейса", example="2018-05-29"),
+        scenario: str = Query(..., description="", example="позитивный (+20%)"),
+        booking_period: Optional[int] = Query(1, ge=1, le=12,
+                                              description="Период прогнозирования спроса для рейса (в месяцах)",
+                                              example='1'),
+):
+    """Сценарный прогноз."""
+
+    flight_date_obj = datetime.strptime(flight_date, "%Y-%m-%d").date()
+
+    booking_period_start_date = flight_date_obj - timedelta(days=booking_period * 30)
+    booking_period_end_date = flight_date_obj
+
+    query = (
+        session.query(
+            RASPScenario.SDAT_S,
+            RASPScenario.Pred_C_cabin,
+            RASPScenario.Pred_Y_cabin
+        )
+        .filter(
+            RASPScenario.FLT_NUM == flight_number,
+            RASPScenario.SDAT_S.between(booking_period_start_date, booking_period_end_date)
+        ).all()
+    )
+
+    series_data = [{'series': []}]
+
+    dates_receipt = []
+    for result in query.all():
+        sdat_s = result.SDAT_S
+        dates_receipt.append(sdat_s)
+
+
 @router.get("/demand-forecast")
 async def get_demand_forecast(
         flight_number: int = Query(..., description="Номер рейса", example="1116"),
         flight_date: str = Query(..., description="Дата рейса", example="2020-03-29"),
-        booking_class: str = Query(..., description="Класс бронирования", example="B"),
+        booking_class: str = Query(None, description="Класс бронирования", example='N'),
         booking_period: Optional[int] = Query(1, ge=1, le=12,
                                               description="Период прогнозирования спроса для рейса (в месяцах)",
                                               example='1'),
 ):
     """
-    Прогнозирование спроса в разрезе классов бронирования для продаваемых рейсов.
+    Прогнозирование спроса в разрезе классов бронирования для продаваемых рейсов на 2019-2020 год.
     """
     try:
         flight_date_obj = datetime.strptime(flight_date, "%Y-%m-%d").date()
 
         booking_period_start_date = flight_date_obj - timedelta(days=booking_period * 30)
         booking_period_end_date = flight_date_obj
-        booking_classes = booking_class.replace(" ", "").split(",")
 
-        query = session.query(
-            RaspScoreAll.SDAT_S,
-            RaspScoreAll.PASS_BK,
-        )
+        if booking_class:
+            booking_classes = booking_class.replace(" ", "").split(",")
 
-        query = query.filter(
-            RaspScoreAll.FLT_NUM == flight_number,
-            RaspScoreAll.DD == flight_date,
-            RaspScoreAll.SEG_CLASS_CODE.in_(booking_classes),
-            RaspScoreAll.SDAT_S.between(booking_period_start_date, booking_period_end_date),
-        )
+            if booking_classes:
 
-        dates_receipt = []
-        for result in query.all():
-            sdat_s = result.SDAT_S
-            dates_receipt.append(sdat_s)
+                query = session.query(
+                    RaspScoreAll.SDAT_S,
+                    RaspScoreAll.PASS_BK,
+                )
 
-        series_data = [{'series': []}]
+                query = query.filter(
+                    RaspScoreAll.FLT_NUM == flight_number,
+                    RaspScoreAll.DD == flight_date,
+                    RaspScoreAll.SEG_CLASS_CODE.in_(booking_classes),
+                    RaspScoreAll.SDAT_S.between(booking_period_start_date, booking_period_end_date),
+                )
 
-        for booking_class in booking_classes:
-            pass_query = query.filter(
-                RaspScoreAll.SEG_CLASS_CODE == booking_class,
-                RaspScoreAll.DTD >= 0,
+                dates_receipt = []
+                for result in query.all():
+                    sdat_s = result.SDAT_S
+                    dates_receipt.append(sdat_s)
+
+                series_data = [{'series': []}]
+
+                for booking_class in booking_classes:
+                    pass_query = query.filter(
+                        RaspScoreAll.SEG_CLASS_CODE == booking_class,
+                        RaspScoreAll.DTD >= 0,
+                    )
+
+                    pass_bks = [round(result.PASS_BK, 1) for result in pass_query.all()]
+
+                    if pass_bks:
+                        series_data[0]['series'].append({
+                            'name': f'Суммарное бронирование {booking_class}',
+                            'type': 'line',
+                            'data': pass_bks
+                        })
+                    else:
+                        series_data[0]['series'].append({
+                            'name': f'Данных для класс {booking_class} не найдено',
+                            'type': 'line',
+                            'data': [0, 0, 0, 0, 0, 0, 0, 0]
+                        })
+
+                res_data = process_result_demand_forecast_data(series_data, dates_receipt)
+
+                return {'status': 200, "data": res_data}
+
+        if not booking_class:
+            query = session.query(RaspAllClass.SDAT_S, RaspAllClass.PASS_BK).order_by(asc("SDAT_S"))
+
+            query = (
+                query.filter(
+                    RaspAllClass.FLT_NUM == flight_number,
+                    RaspAllClass.DD == flight_date,
+                    RaspAllClass.SDAT_S.between(booking_period_start_date, booking_period_end_date),
+                    RaspAllClass.DTD >= 0,
+                )
             )
 
-            pass_bks = [round(result.PASS_BK, 1) for result in pass_query.all()]
+            pass_bks = [result.PASS_BK for result in query.all()]
 
-            if pass_bks:
-                series_data[0]['series'].append({
-                    'name': f'Суммарное бронирование {booking_class}',
-                    'type': 'line',
-                    'data': pass_bks
-                })
-            else:
-                series_data[0]['series'].append({
-                    'name': f'Данных для класс {booking_class} не найдено',
-                    'type': 'line',
-                    'data': [0, 0, 0, 0, 0, 0, 0, 0]
-                })
+            dates_receipt = []
+            for result in query.all():
+                sdat_s = result.SDAT_S
 
-        res_data = process_result_demand_forecast_data(series_data, dates_receipt)
+                dates_receipt.append(sdat_s)
 
-        return {'status': 200, "data": res_data}
+            series_data = [{'series': []}]
+
+            series_data[0]['series'].append({
+                'name': f'Суммарное бронирование "Все классы"',
+                'type': 'line',
+                'data': pass_bks
+            })
+
+            res_data = process_result_demand_forecast_data(series_data, dates_receipt)
+
+            return {'status': 200, "data": res_data}
 
     except Exception as e:
         return {'status': 500, "error": str(e)}
-
-
-@router.get("/demand-profile")
-async def get_demand_profile(
-        direction: str = Query(..., description="Направление рейса", example="Москва - Сочи"),
-        flight_number: str = Query(..., description="Номер рейса", example="1120"),
-        booking_class: str = Query(..., description="Класс бронирования", example="Y"),
-        booking_start: Optional[date] = Query(None,
-                                              description="Период для просмотра динамики бронирования стартовая дата",
-                                              example='2018-05-29'),
-        booking_end: Optional[date] = Query(None,
-                                            description="Период для просмотра динамики бронирования конечная дата",
-                                            example='2019-12-31')
-):
-    """
-    Определение профилей спроса в разрезе классов бронирования, по вылетевшим рейсам.
-    """
-    pass
